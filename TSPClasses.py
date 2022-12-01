@@ -57,7 +57,12 @@ def nameForInt( num ):
 class Scenario:
 
 	HARD_MODE_FRACTION_TO_REMOVE = 0.20 # Remove 20% of the edges
-
+	'''
+	params:
+	city_locations: x, y coordinates of points
+	difficulty: string
+	rand_seed: int
+	'''
 	def __init__( self, city_locations, difficulty, rand_seed ):
 		self._difficulty = difficulty
 
