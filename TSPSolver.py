@@ -101,8 +101,11 @@ class TSPSolver:
 
 		
 	def fancy( self,time_allowance=60.0 ):
-		solver = TSPSolver.LocalSearchSolver(self)
+		# solver = TSPSolver.LocalSearchSolver(self)
+		solver = TSPSolver.LocalSearchSover2(self)
 		return solver.solve(time_allowance)
+
+
 	###---SHARED FUNCTIONS---###
 
 	'''
@@ -162,6 +165,14 @@ class TSPSolver:
 	'''
 	Because we are using so many different ways of solving and each way uses different data structures and techniques, it is more organized to use inner-classes
 	'''
+
+	class LocalSearchSover2(object):
+		def __init__(self, solver_instance):
+			self.outer = solver_instance
+		
+		def solve(time_allowance):
+			pass
+
 	class LocalSearchSolver(object):
 		def __init__(self, solver_instance):
 			self.outer = solver_instance
