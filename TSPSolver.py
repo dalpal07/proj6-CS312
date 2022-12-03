@@ -364,6 +364,8 @@ class TSPSolver:
 					p2 = []
 					for p in path:
 						p2.append(self.cities[p])
+					
+					p2.append(self.cities[curr_city])
 
 					solution = TSPSolution(p2)
 					if solution.cost < self.bssf_dist:
