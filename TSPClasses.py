@@ -49,12 +49,6 @@ def nameForInt( num ):
 		return nameForInt((num-1) // 26 ) + nameForInt((num-1)%26+1)
 
 
-
-
-
-
-
-
 class Scenario:
 
 	HARD_MODE_FRACTION_TO_REMOVE = 0.20 # Remove 20% of the edges
@@ -501,7 +495,7 @@ class SharedUtils:
 	def create_results(self, out):
 		results = {}
 		results['cost'] = out.bssf_dist
-		results['time'] = out.end_time - out.start_time
+		results['time'] = time.time() - out.start_time
 		results['count'] = out.count
 		results['soln'] = out.bssf
 		results['max'] = out.max
