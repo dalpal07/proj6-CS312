@@ -32,6 +32,7 @@ class TSPSolver:
 	def __init__( self, gui_view ):
 		self._scenario = None
 		self.noise = 3
+		self.start_city = None
 
 	def setupWithScenario( self, scenario ):
 		self._scenario = scenario
@@ -148,9 +149,9 @@ class TSPSolver:
 			result = solver.solve()
 			
 		elif initial_strategy == InitialStrategies.NOISY_GREEDY:
-
+			
 			solver = self.GreedySolver(self, self.noise)
-			result = solver.solve()
+			result = solver.solve(None, self.start_city)
 		else:
 			print("Error in find_initial_bssf!")
 			return math.inf
@@ -167,14 +168,6 @@ class TSPSolver:
 	'''
 
 	class LocalSearchSolver2(object):
-		#Static constant variables that we tune to change performance
-
-		#This is the amount of noise we want in our noisy greedy initial solutions (allows us to explore different search spaces)
-		NOISE = 1
-		#This is the number of times we will do a local search
-		N_ITERATIONS = 1
-
-		COMBO_SIZE = 3
 
 		def __init__(self, solver_instance):
 			self.outer = solver_instance
@@ -182,6 +175,12 @@ class TSPSolver:
 		def solve(self, time_allowance):
 			self.cities = self.outer._scenario.getCities()
 			self.n_cities = len(self.cities)
+
+			#This setting 
+			self.USE_BEST_GREEDY = True
+			self.NOISE = 1
+			self.N_ITERATIONS = 1
+			self.COMBO_SIZE = 3
 
 			#This is the best solution overall
 			self.bssf = None
@@ -200,63 +199,80 @@ class TSPSolver:
 
 			self.shared_utils = SharedUtils()
 
+			if not self.USE_BEST_GREEDY:
+				self.n_starts = self.n_cities
+			else:
+				self.n_starts = 1
+
 			self.start_time = time.time()
 
 			#Set the noise level how we want it
 			self.outer.noise = self.NOISE
 
-			
-			for i in range(self.N_ITERATIONS):
-				print("New iteration")
+			for j in range(self.n_starts):
 
-				#Check the time
-				if time.time() - self.start_time > time_allowance:
-					return self.shared_utils.create_results(self)
+				for i in range(self.N_ITERATIONS):
+					print("New iteration")
 
-				#Find our initial solution
-				result = self.outer.find_initial_bssf(InitialStrategies.NOISY_GREEDY)
+					#Check the time
+					if time.time() - self.start_time > time_allowance:
+						return self.shared_utils.create_results(self)
 
-				#Check the time again in case the initial bssf took forever
-				if time.time() - self.start_time > time_allowance:
-					return self.shared_utils.create_results(self)
+					#Find our initial solution
 
-				#Set the local bests accordingly
-				self.local_bssf = result['soln']
-				self.local_bssf_dist = result['cost']
+					#set the start city so we only get the solution at that start city
+					if not self.USE_BEST_GREEDY:
+						self.outer.start_city = j
+					else:
+						self.outer.start_city = None
 
-				changed = True
-				#while there is a change made in the while loop, keep going. We know there is only a change when there is an improvement
-				while changed:
-					changed = False
+					result = self.outer.find_initial_bssf(InitialStrategies.NOISY_GREEDY)
 
-					#now we need to create an array of cities
-					route_indices = self.create_ind_arr(self.local_bssf.route)
-					route_indices_copy = copy.deepcopy(route_indices)
+					#if the cost of the result is inf, continue
+					if result['cost'] == math.inf:
+						continue
 
-					#Now we look at every windo of size combo size in the list
-					for i in range(len(route_indices_copy) - self.COMBO_SIZE):
+					#Check the time again in case the initial bssf took forever
+					if time.time() - self.start_time > time_allowance:
+						return self.shared_utils.create_results(self)
 
-						#Get all combinations of the next COMBO_SIZE elements
-						combos = self.generate_combos()
+					#Set the local bests accordingly
+					self.local_bssf = result['soln']
+					self.local_bssf_dist = result['cost']
 
-						#now replace the respective elements for each cmbo
-						for combo in combos:
-							for j in range(self.COMBO_SIZE):
-								#replace the current element with the element at its offset index in the original
-								route_indices_copy[i + j] = route_indices[i + combo[j]]
+					changed = True
+					#while there is a change made in the while loop, keep going. We know there is only a change when there is an improvement
+					while changed and ((time.time() - self.start_time) < time_allowance):
+						changed = False
 
-							#Now check the solution
-							solution = TSPSolution(self.create_city_arr(route_indices_copy))
-							if solution.cost < self.local_bssf_dist:
-								print("found one!")
-								self.local_bssf = solution
-								self.local_bssf_dist = solution.cost
-								changed = True
-				
-				#Now that we are done exploring this local space, we check to see if it is our best of all the iterations
-				if self.local_bssf_dist < self.bssf_dist:
-					self.bssf = self.local_bssf
-					self.bssf_dist = self.local_bssf_dist
+						#now we need to create an array of cities
+						route_indices = self.create_ind_arr(self.local_bssf.route)
+						route_indices_copy = copy.deepcopy(route_indices)
+
+						#Now we look at every windo of size combo size in the list
+						for i in range(len(route_indices_copy) - self.COMBO_SIZE):
+
+							#Get all combinations of the next COMBO_SIZE elements
+							combos = self.generate_combos()
+
+							#now replace the respective elements for each cmbo
+							for combo in combos:
+								for j in range(self.COMBO_SIZE):
+									#replace the current element with the element at its offset index in the original
+									route_indices_copy[i + j] = route_indices[i + combo[j]]
+
+								#Now check the solution
+								solution = TSPSolution(self.create_city_arr(route_indices_copy))
+								if solution.cost < self.local_bssf_dist:
+									print("found one!")
+									self.local_bssf = solution
+									self.local_bssf_dist = solution.cost
+									changed = True
+					
+					#Now that we are done exploring this local space, we check to see if it is our best of all the iterations
+					if self.local_bssf_dist < self.bssf_dist:
+						self.bssf = self.local_bssf
+						self.bssf_dist = self.local_bssf_dist
 			
 			#At this point, we are done with our iterations, so we return our result
 			return self.shared_utils.create_results(self)
@@ -448,7 +464,7 @@ class TSPSolver:
 			self.shared_utils = SharedUtils()
 		
 		
-		def solve(self, time_allowance=60.0):
+		def solve(self, time_allowance=60.0, single_city=None):
 			np.random.seed(int(time.time()))
 			time_allowance = math.inf
 			self.start_city_ind = 0
@@ -466,16 +482,28 @@ class TSPSolver:
 
 			self.start_time = time.time()
 			self.edges = self.shared_utils.get_edges(self.cities)
+
+			#If a single city was specified, that means we only run the greedy for that one city
+			if single_city != None:
+				self.start_city_ind = single_city
+				return self.explore(time_allowance)
+
 			result = self.explore(time_allowance)
 			time_used = result["time"]
 
 			#This allows us to loop through all the cities because we go through all the start indices
-			while time_used < time_allowance and self.start_city_ind < self.n_cities - 1:
+			for i in range(self.n_cities):
+
+				if time_used > time_allowance:
+					break
+
+				
+				#Otherwise, we look at all the starts and find the best
 				self.start_city_ind += 1
 				time_used = time.time() - self.start_time
 				result = self.explore(time_allowance - time_used)
 				time_used += result['time']
-			
+
 			return result
 
 		
@@ -488,6 +516,10 @@ class TSPSolver:
 
 			# while the queue is not empty and we are in the time bound and there is a solution:
 			while time.time() - self.start_time < time_allowance:
+
+				#This means that there are no edges to or from this city
+				if curr_city not in self.edges:
+					return self.shared_utils.create_results(self)
 
 				curr_edges = self.edges[curr_city]
 				
