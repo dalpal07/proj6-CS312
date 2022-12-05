@@ -212,7 +212,6 @@ class TSPSolver:
 			for j in range(self.n_starts):
 
 				for i in range(self.N_ITERATIONS):
-					print("New iteration")
 
 					#Check the time
 					if time.time() - self.start_time > time_allowance:
@@ -264,7 +263,6 @@ class TSPSolver:
 								#Now check the solution
 								solution = TSPSolution(self.create_city_arr(route_indices_copy))
 								if solution.cost < self.local_bssf_dist:
-									print("found one!")
 									self.local_bssf = solution
 									self.local_bssf_dist = solution.cost
 									changed = True
