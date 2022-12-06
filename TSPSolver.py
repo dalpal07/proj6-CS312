@@ -103,8 +103,8 @@ class TSPSolver:
 
 		
 	def fancy( self,time_allowance=60.0 ):
-		# solver = TSPSolver.LocalSearchSolver(self)
-		solver = TSPSolver.LocalSearchSolver2(self)
+		solver = TSPSolver.LocalSearchSolver(self)
+		# solver = TSPSolver.LocalSearchSolver2(self)
 		return solver.solve(time_allowance)
 
 
@@ -312,30 +312,16 @@ class TSPSolver:
 	class LocalSearchSolver(object):
 		def __init__(self, solver_instance):
 			self.outer = solver_instance
+			self.start_time = None
 
 		# Takes a list and two indexes
 		# Swaps the two indexes
 		# Returns the updated list
 		def _swap_2(self, og_list, i, j): 
-			copy_list = []
-			for li in og_list:
-				copy_list.append(li)
+			copy_list = og_list.copy()
 			li = copy_list[i]
 			copy_list[i] = copy_list[j]
 			copy_list[j] = li
-			return copy_list
-
-		# Takes a list and three indexes
-		# Swaps the three indexes
-		# Returns the updated list
-		def _swap_3(self, og_list, i, j, k):
-			copy_list = []
-			for li in og_list:
-				copy_list.append(li)
-			li = copy_list[i]
-			copy_list[i] = copy_list[j]
-			copy_list[j] = copy_list[k]
-			copy_list[k] = li
 			return copy_list
 
 		# Takes a list
@@ -367,22 +353,6 @@ class TSPSolver:
 			return best_solution
 
 		# Takes a list
-		# Swaps every possible combination of 3 nodes
-		# Returns the best solution
-		def swap_3(self, og_list):
-			best_solution = None
-			for i in range(len(og_list)):
-				for j in range(len(og_list)):
-					for k in range(len(og_list)):
-						if i == j or j == k or k == i:
-							break
-						tour = self._swap_3(og_list, i, j, k)
-						solution = TSPSolution(tour)
-						if best_solution is None or solution.cost < best_solution.cost:
-							best_solution = solution
-			return best_solution
-
-		# Takes a list
 		# Removes the first node
 		# Tries the first node in every possible position
 		# Returns the best solution
@@ -402,51 +372,38 @@ class TSPSolver:
 		# Tries each neighboring method
 		# Returns the best solution
 		def check_neighbors(self, og_list):
-			best_solution = self.swap_seq(og_list)
-			solution = self.swap_2(og_list)
-			if solution.cost < best_solution.cost:
-				best_solution = solution
-			solution = self.swap_3(og_list)
-			if solution.cost < best_solution.cost:
-				best_solution = solution
+			best_solution = self.swap_2(og_list)
 			solution = self.percolate_first(og_list)
+			if solution.cost < best_solution.cost:
+				best_solution = solution
+			solution = self.swap_seq(og_list)
 			if solution.cost < best_solution.cost:
 				best_solution = solution
 			return best_solution
 
 		def solve(self, time_allowance=60.0):
 			results = {}
-			cities = self.outer._scenario.getCities()
-			solution_time_allowance = 0.1
 			bssf = None
-			expansions = 0
 			count = 0
 			keep_going = True
-			start_time = time.time()
-			# Iterate n times (as long as a solution is found)
-			# This iteration chooses a random tour, follows the best neighbors, and swaps
-			# the best solution if a new best is found
-			while expansions < len(cities) or bssf is None or bssf.cost == float("inf"):
-				expansions += 1
-				solution = self.outer.defaultRandomTour(solution_time_allowance)['soln']
-				if solution.cost == math.inf:
-					# The time allowance for finding a random tour increases when it is hard
-					# to find a solution
-					solution_time_allowance *= 2
-					break
-				# Iterate as long as neighbors are found that have better solutions
-				while keep_going:
-					new_solution = self.check_neighbors(solution.route)
-					if new_solution.cost < solution.cost:
-						solution = new_solution
-					else:
-						keep_going = False
-				if bssf is None or solution.cost < bssf.cost:
-					bssf = solution
-					count += 1
+			self.start_time = time.time()
+			# Choose the greedy algorithm and set it as the bssf
+			solver = self.outer.GreedySolver(self.outer)
+			solution = solver.solve(time_allowance)['soln']
+			bssf = solution
+			# Iterate as long as neighbors are found that have better solutions
+			while keep_going:
+				new_solution = self.check_neighbors(solution.route)
+				if new_solution.cost < solution.cost:
+					solution = new_solution
+				else:
+					keep_going = False
+			if solution.cost < bssf.cost:
+				bssf = solution
+				count += 1
 			end_time = time.time()
-			results['cost'] = bssf.cost if bssf != None else math.inf
-			results['time'] = end_time - start_time
+			results['cost'] = bssf.cost
+			results['time'] = end_time - self.start_time
 			results['count'] = count
 			results['soln'] = bssf
 			results['max'] = None
