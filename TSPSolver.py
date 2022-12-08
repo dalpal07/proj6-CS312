@@ -528,9 +528,9 @@ class TSPSolver:
 		#These default values are the values that can be fine tuned to improve the not initial bssf pruning
 		#These are used when TSPSolver calls branchAndBound() because nothing is passed into init()
 		DEFAULT_MAX_CHILD_STATES = 5
-		DEFAULT_MAX_QUEUE_SIZE = math.inf
+		DEFAULT_MAX_QUEUE_SIZE = 20
 		DEFAULT_DEPTH_IMPORTANCE = 1
-		DEFAULT_BOUND_IMPORTANCE = .5
+		DEFAULT_BOUND_IMPORTANCE = 1
 
 		#The greedy algorithm seems to work best for the initial algorithm because it's really fast. However, I didn't spend much time tuning the RESTRICTED* 
 		#parameters
